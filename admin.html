@@ -413,10 +413,22 @@
 
     
 
+    <!-- Supabase client (loaded if supabase-config.js enables it) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="supabase-config.js"></script>
     <script>
-        // Firebase is disabled - using IndexedDB only
+        // Firebase is disabled - using IndexedDB only (Supabase optional)
         let firestore = null;
         let storage = null;
+        // Initialize Supabase client if config present
+        if (window.supabaseConfigExists && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+            try {
+                window.supabase = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+                console.log('Supabase client initialized');
+            } catch (e) {
+                console.error('Failed to init Supabase:', e);
+            }
+        }
 
         // ===== ADMIN CREDENTIALS (Ganti dengan yang sesuai) =====
         const ADMIN_USERNAME = "admin";
@@ -553,6 +565,18 @@
             reader.readAsDataURL(file);
         }
 
+        function dataURLtoBlob(dataurl) {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
+
         // ---------- IndexedDB helper (allows storing larger images than localStorage) ----------
         function openDB() {
             return new Promise((resolve, reject) => {
@@ -603,7 +627,7 @@
             }));
         }
 
-        // Upload photo (uses IndexedDB only)
+        // Upload photo (IndexedDB fallback; Supabase upload if configured)
         async function uploadPhoto() {
             console.log('uploadPhoto called, isLoggedIn:', isLoggedIn);
             console.log('Button clicked at:', new Date().toLocaleString());
@@ -639,7 +663,84 @@
                     uploadBtn.textContent = '⏳ Menyimpan foto...';
                     const id = Date.now();
 
-                    // Save to IndexedDB only (no Firebase)
+                    // If Supabase is configured, try uploading there first
+                    if (window.supabase) {
+                        try {
+                            uploadBtn.textContent = '⏳ Mengunggah ke Supabase...';
+                            const blob = dataURLtoBlob(compressedImageUrl);
+                            const filename = `${Date.now()}_${Math.random().toString(36).slice(2,9)}.jpg`;
+                            const { data, error: uploadErr } = await window.supabase.storage.from('gallery-photos').upload(filename, blob, { cacheControl: '3600', upsert: false });
+                            if (uploadErr) throw uploadErr;
+
+                            // Get public URL
+                            const { data: publicUrlData } = window.supabase.storage.from('gallery-photos').getPublicUrl(filename);
+                            const publicUrl = publicUrlData?.publicUrl || null;
+
+                            // Insert metadata row into photos table
+                            uploadBtn.textContent = '⏳ Menyimpan metadata...';
+                            const insertPayload = {
+                                title: title,
+                                description: description,
+                                category: category,
+                                imageUrl: publicUrl || compressedImageUrl,
+                                uploadDate: new Date().toISOString()
+                            };
+                            const { error: insertErr } = await window.supabase.from('photos').insert([insertPayload]);
+                            if (insertErr) console.warn('Supabase insert error (metadata):', insertErr);
+
+                            // Also save a local copy to IndexedDB for admin view
+                            const photoData = {
+                                title: title,
+                                description: description,
+                                category: category,
+                                imageUrl: publicUrl || compressedImageUrl,
+                                uploadDate: new Date().toLocaleString('id-ID'),
+                                id: id
+                            };
+                            try { await savePhotoToDB(photoData); } catch (e) { console.warn('Local save failed:', e); }
+
+                            // Reset form
+                            document.getElementById('photoTitle').value = '';
+                            document.getElementById('photoDescription').value = '';
+                            document.getElementById('photoFile').value = '';
+                            document.getElementById('previewImg').classList.add('hidden');
+
+                            showMessage('✅ Foto berhasil diupload ke Supabase!', 'success');
+                            await loadPhotos();
+                            await loadStats();
+                        } catch (e) {
+                            console.error('Supabase upload error:', e);
+                            showMessage('❌ Gagal mengunggah ke Supabase. Menyimpan lokal sebagai fallback.', 'error');
+                            // Fallback to local IndexedDB save below
+                            try {
+                                const photoData = {
+                                    title: title,
+                                    description: description,
+                                    category: category,
+                                    imageUrl: compressedImageUrl,
+                                    uploadDate: new Date().toLocaleString('id-ID'),
+                                    id: id
+                                };
+                                await savePhotoToDB(photoData);
+                                document.getElementById('photoTitle').value = '';
+                                document.getElementById('photoDescription').value = '';
+                                document.getElementById('photoFile').value = '';
+                                document.getElementById('previewImg').classList.add('hidden');
+                                showMessage('✅ Foto disimpan secara lokal.', 'success');
+                                await loadPhotos();
+                                await loadStats();
+                            } catch (er) {
+                                console.error('Fallback local save failed:', er);
+                                showMessage('❌ Error menyimpan foto (fallback gagal).', 'error');
+                            }
+                        } finally {
+                            uploadBtn.disabled = false;
+                            uploadBtn.textContent = 'Upload Foto';
+                        }
+                        return;
+                    }
+
+                    // If Supabase not configured, save to IndexedDB only
                     const photoData = {
                         title: title,
                         description: description,

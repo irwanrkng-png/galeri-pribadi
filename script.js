@@ -97,19 +97,20 @@ async function loadGallery() {
     const galleryGrid = document.getElementById('galleryGrid');
     if (!galleryGrid) return;
     galleryGrid.innerHTML = '';
-
     let photos = [];
-    // If Firestore is available, load from there
-    if (firestore) {
+    // If Supabase client is available, fetch from the 'photos' table
+    if (window.supabase) {
         try {
-            const snapshot = await firestore.collection('photos').orderBy('id', 'desc').get();
-            photos = snapshot.docs.map(doc => doc.data());
-        } catch (e) {
-            console.error('Error loading from Firestore:', e);
-            // fallback to IndexedDB/localStorage
-            try {
+            const { data: rows, error } = await window.supabase.from('photos').select('*').order('uploadDate', { ascending: false });
+            if (!error && rows && rows.length) {
+                photos = rows.map(r => ({ title: r.title || 'Foto', imageUrl: r.imageUrl, description: r.description }));
+            } else {
+                // fallback to local DB
                 photos = await getAllPhotosFromDB();
-            } catch (err) { photos = []; }
+            }
+        } catch (e) {
+            console.error('Error loading from Supabase:', e);
+            try { photos = await getAllPhotosFromDB(); } catch (er) { photos = []; }
         }
     } else {
         try {
