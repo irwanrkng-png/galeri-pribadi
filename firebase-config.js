@@ -10,7 +10,8 @@
 //   appId: "..."
 // };
 
-window.firebaseConfigExists = true;
+// Disable Firebase - using IndexedDB only
+window.firebaseConfigExists = false;
 window.firebaseConfig = {
   apiKey: "AIzaSyD68M4dPF7hBRO2dHuxRHOPxn8yr0SGa",
   authDomain: "galeryyy-1bc72.firebaseapp.com",

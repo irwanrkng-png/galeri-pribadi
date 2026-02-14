@@ -84,19 +84,26 @@ const firebaseConfig = {
 
 ### Langkah 5: Update Konfigurasi di admin.html
 
-Buka file `admin.html` dan cari bagian:
+Untuk memudahkan, proyek ini sudah menunggu file `firebase-config.js` di root proyek.
+
+1. Buat (atau edit) file `firebase-config.js` di folder proyek.
+2. Paste konfigurasi web Firebase Anda ke dalam `window.firebaseConfig` dan set `window.firebaseConfigExists = true`.
+
+Contoh isi `firebase-config.js` (sederhana):
 
 ```javascript
-// ===== KONFIGURASI FIREBASE =====
-// TODO: Ganti dengan konfigurasi Firebase Anda
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "your-project.firebaseapp.com",
-    // ... dst
+window.firebaseConfigExists = true;
+window.firebaseConfig = {
+   apiKey: "YOUR_API_KEY",
+   authDomain: "your-project.firebaseapp.com",
+   projectId: "your-project",
+   storageBucket: "your-project.appspot.com",
+   messagingSenderId: "YOUR_SENDER_ID",
+   appId: "YOUR_APP_ID"
 };
 ```
 
-Ganti dengan konfigurasi Firebase Anda yang sudah dicopy.
+`admin.html` sudah memuat `firebase-config.js` dan akan otomatis menginisialisasi Firebase jika `window.firebaseConfigExists === true`.
 
 ### Langkah 6: Setup Authentication (Opsional)
 

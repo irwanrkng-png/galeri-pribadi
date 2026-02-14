@@ -412,25 +412,11 @@
     </div>
 
     
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
-    <script src="firebase-config.js"></script>
+
     <script>
-        // Firebase is optional. Put your config into firebase-config.js and
-        // set window.firebaseConfigExists = true there to enable remote storage.
+        // Firebase is disabled - using IndexedDB only
         let firestore = null;
         let storage = null;
-        try {
-            if (window.firebaseConfigExists && window.firebaseConfig && Object.keys(window.firebaseConfig).length) {
-                firebase.initializeApp(window.firebaseConfig);
-                firestore = firebase.firestore();
-                storage = firebase.storage();
-                console.log('Firebase initialized');
-            }
-        } catch (error) {
-            console.log('Firebase not initialized - using IndexedDB fallback', error);
-        }
 
         // ===== ADMIN CREDENTIALS (Ganti dengan yang sesuai) =====
         const ADMIN_USERNAME = "admin";
@@ -496,41 +482,14 @@
             }
             showMessage('⏳ Mengompres background...', 'success');
             compressImage(file, async function(compressedImageUrl) {
-                // Jika Firebase dikonfigurasi, upload ke Storage dan simpan URL di Firestore (settings/heroBg)
-                if (typeof firestore !== 'undefined' && typeof storage !== 'undefined' && firestore && storage) {
-                    try {
-                        const id = Date.now();
-                        const blob = await (await fetch(compressedImageUrl)).blob();
-                        const storageRef = storage.ref().child('hero/hero-bg-' + id + '.jpg');
-                        await storageRef.put(blob);
-                        const downloadUrl = await storageRef.getDownloadURL();
-
-                        await firestore.collection('settings').doc('heroBg').set({ imageUrl: downloadUrl, updated: new Date().toISOString() });
-
-                        // Save a local copy for immediate preview
-                        localStorage.setItem('heroBgImage', downloadUrl);
-
-                        // Reset form
-                        document.getElementById('heroBgFile').value = '';
-                        document.getElementById('previewHeroBg').classList.add('hidden');
-
-                        showMessage('✅ Background berhasil diupload ke Firebase!', 'success');
-                        return;
-                    } catch (e) {
-                        console.error('Firebase hero upload error:', e);
-                        showMessage('❌ Gagal upload ke Firebase. Menyimpan ke local sebagai fallback.', 'error');
-                        // fallback to localStorage below
-                    }
-                }
-
-                // Fallback: simpan ke localStorage (seperti sebelumnya)
+                // Simpan ke localStorage (fallback only, no Firebase)
                 localStorage.setItem('heroBgImage', compressedImageUrl);
 
                 // Reset form
                 document.getElementById('heroBgFile').value = '';
                 document.getElementById('previewHeroBg').classList.add('hidden');
 
-                showMessage('✅ Background berhasil diupdate (disimpan lokal).', 'success');
+                showMessage('✅ Background berhasil diupdate!', 'success');
             });
         }
 
@@ -547,7 +506,20 @@
             }
         }
 
-        function compressImage(file, callback, maxWidth = 1200, quality = 0.8) {
+        function compressImage(file, callback, maxWidth = 600, quality = 0.4) {
+            // Fast compression: lower quality, smaller width
+            const fileSizeMB = file.size / (1024 * 1024);
+            
+            // Jika file sudah kecil (<500KB), langsung pakai tanpa kompresi
+            if (fileSizeMB < 0.5) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    callback(e.target.result);
+                };
+                reader.readAsDataURL(file);
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
@@ -556,6 +528,7 @@
                     let width = img.width;
                     let height = img.height;
 
+                    // Aggressive sizing down for speed
                     if (width > maxWidth) {
                         height = (height * maxWidth) / width;
                         width = maxWidth;
@@ -566,6 +539,7 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     
+                    // Use lower quality and/or try webp if supported
                     canvas.toBlob(function(blob) {
                         const reader2 = new FileReader();
                         reader2.onload = function(e2) {
@@ -629,7 +603,7 @@
             }));
         }
 
-        // Upload photo (uses IndexedDB)
+        // Upload photo (uses IndexedDB only)
         async function uploadPhoto() {
             console.log('uploadPhoto called, isLoggedIn:', isLoggedIn);
             console.log('Button clicked at:', new Date().toLocaleString());
@@ -639,40 +613,45 @@
                 showMessage('⚠️ Anda harus login terlebih dahulu!', 'error');
                 return;
             }
-            const title = document.getElementById('photoTitle').value.trim() || 'Foto ' + Date.now();
-            const description = document.getElementById('photoDescription').value.trim();
-            const category = 'kenangan'; // Default category
-            const file = document.getElementById('photoFile').files[0];
 
-            console.log('Form data - title:', title, 'file:', file ? file.name : 'no file');
+            const uploadBtn = document.getElementById('uploadPhotoBtn');
+            const wasDisabled = uploadBtn.disabled;
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Sedang mengompres...';
 
-            if (!file) {
-                showMessage('⚠️ Pilih foto terlebih dahulu!', 'error');
-                return;
-            }
+            try {
+                const title = document.getElementById('photoTitle').value.trim() || 'Foto ' + Date.now();
+                const description = document.getElementById('photoDescription').value.trim();
+                const category = 'kenangan'; // Default category
+                const file = document.getElementById('photoFile').files[0];
 
-            showMessage('⏳ Mengompres gambar...', 'success');
-            compressImage(file, async function(compressedImageUrl) {
-                const id = Date.now();
+                console.log('Form data - title:', title, 'file:', file ? file.name : 'no file');
 
-                // If Firebase is configured, upload to Storage and save metadata to Firestore
-                if (firestore && storage) {
+                if (!file) {
+                    showMessage('⚠️ Pilih foto terlebih dahulu!', 'error');
+                    uploadBtn.disabled = wasDisabled;
+                    uploadBtn.textContent = 'Upload Foto';
+                    return;
+                }
+
+                showMessage('⏳ Mengompres gambar...', 'success');
+                compressImage(file, async function(compressedImageUrl) {
+                    uploadBtn.textContent = '⏳ Menyimpan foto...';
+                    const id = Date.now();
+
+                    // Save to IndexedDB only (no Firebase)
+                    const photoData = {
+                        title: title,
+                        description: description,
+                        category: category,
+                        imageUrl: compressedImageUrl,
+                        uploadDate: new Date().toLocaleString('id-ID'),
+                        id: id
+                    };
+
                     try {
-                        const blob = await (await fetch(compressedImageUrl)).blob();
-                        const storageRef = storage.ref().child('photos/' + id + '.jpg');
-                        await storageRef.put(blob);
-                        const downloadUrl = await storageRef.getDownloadURL();
-
-                        const photoData = {
-                            title: title,
-                            description: description,
-                            category: category,
-                            imageUrl: downloadUrl,
-                            uploadDate: new Date().toISOString(),
-                            id: id
-                        };
-
-                        await firestore.collection('photos').doc(String(id)).set(photoData);
+                        uploadBtn.textContent = '⏳ Menyimpan ke database...';
+                        await savePhotoToDB(photoData);
 
                         // Reset form
                         document.getElementById('photoTitle').value = '';
@@ -680,62 +659,36 @@
                         document.getElementById('photoFile').value = '';
                         document.getElementById('previewImg').classList.add('hidden');
 
-                        showMessage('✅ Foto berhasil diupload ke Firebase Storage!', 'success');
-                        loadPhotos();
-                        loadStats();
-                        return;
+                        showMessage('✅ Foto berhasil diupload!', 'success');
+                        await loadPhotos();
+                        await loadStats();
                     } catch (e) {
-                        console.error('Firebase upload error:', e);
-                        showMessage('❌ Gagal mengupload ke Firebase. Menyimpan ke IndexedDB sebagai fallback.', 'error');
-                        // fallback to IndexedDB below
+                        console.error('IndexedDB error:', e);
+                        showMessage('❌ Error menyimpan foto (storage penuh?). Coba foto yang lebih kecil.', 'error');
+                    } finally {
+                        uploadBtn.disabled = false;
+                        uploadBtn.textContent = 'Upload Foto';
                     }
-                }
-
-                // Fallback: save to IndexedDB (existing behavior)
-                const photoData = {
-                    title: title,
-                    description: description,
-                    category: category,
-                    imageUrl: compressedImageUrl,
-                    uploadDate: new Date().toLocaleString('id-ID'),
-                    id: id
-                };
-
-                try {
-                    await savePhotoToDB(photoData);
-
-                    // Reset form
-                    document.getElementById('photoTitle').value = '';
-                    document.getElementById('photoDescription').value = '';
-                    document.getElementById('photoFile').value = '';
-                    document.getElementById('previewImg').classList.add('hidden');
-
-                    showMessage('✅ Foto berhasil diupload! Disimpan di IndexedDB (fallback).', 'success');
-                    loadPhotos();
-                    loadStats();
-                } catch (e) {
-                    console.error('IndexedDB error:', e);
-                    showMessage('❌ Error menyimpan foto.', 'error');
-                }
-            });
+                });
+            } catch (e) {
+                console.error('Upload error:', e);
+                showMessage('❌ Error saat upload.', 'error');
+                uploadBtn.disabled = wasDisabled;
+                uploadBtn.textContent = 'Upload Foto';
+            }
         }
 
         async function loadPhotos() {
             const photosGrid = document.getElementById('photosGrid');
             photosGrid.innerHTML = '';
 
+            // Load from IndexedDB only
             let photos = [];
-            // If firestore available, load from Firestore
-            if (firestore) {
-                try {
-                    const snapshot = await firestore.collection('photos').orderBy('id', 'desc').get();
-                    photos = snapshot.docs.map(doc => doc.data());
-                } catch (e) {
-                    console.error('Error fetching from Firestore:', e);
-                    photos = await getAllPhotosFromDB();
-                }
-            } else {
+            try {
                 photos = await getAllPhotosFromDB();
+            } catch (e) {
+                console.error('Error loading photos:', e);
+                photos = [];
             }
 
             if (!photos || photos.length === 0) {
@@ -764,39 +717,7 @@
         async function deletePhoto(photoId) {
             if (!confirm('Apakah Anda yakin ingin menghapus foto ini?')) return;
 
-            // Jika Firestore + Storage tersedia, hapus dari sana
-            if (typeof firestore !== 'undefined' && typeof storage !== 'undefined' && firestore && storage) {
-                try {
-                    const docRef = firestore.collection('photos').doc(String(photoId));
-                    const doc = await docRef.get();
-                    if (doc.exists) {
-                        const data = doc.data();
-                        if (data && data.imageUrl) {
-                            try {
-                                const storageRef = storage.refFromURL(data.imageUrl);
-                                await storageRef.delete();
-                            } catch (err) {
-                                console.warn('Gagal menghapus file di Storage (mungkin URL eksternal):', err);
-                            }
-                        }
-                        await docRef.delete();
-                    }
-
-                    // Also remove from local IndexedDB if present
-                    try { await deletePhotoFromDB(photoId); } catch(e) { /* ignore */ }
-
-                    await loadPhotos();
-                    await loadStats();
-                    showMessage('🗑️ Foto berhasil dihapus dari Firebase dan lokal.', 'success');
-                    return;
-                } catch (e) {
-                    console.error('Firebase delete error:', e);
-                    showMessage('❌ Gagal menghapus foto dari Firebase. Mencoba menghapus lokal...', 'error');
-                    // continue to fallback
-                }
-            }
-
-            // Fallback: delete from IndexedDB
+            // Delete from IndexedDB only
             try {
                 await deletePhotoFromDB(photoId);
                 await loadPhotos();
