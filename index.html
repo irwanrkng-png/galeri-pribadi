@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galeri Pribadi - Koleksi Foto Terbaik</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header/Navbar -->
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="logo">
+                <h1>KOLEKSI</h1>
+            </div>
+            <nav class="nav-menu">
+                <a href="#gallery" class="nav-link">Galeri</a>
+                <a href="#about" class="nav-link">Tentang</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section with Background -->
+    <section class="hero-banner">
+        <div class="hero-overlay"></div>
+        <div class="hero-content-banner">
+            <h1>Galery</h1>
+            <p class="breadcrumb">Beranda</p>
+        </div>
+    </section>
+
+    <!-- Gallery Section with Filters -->
+    <section id="gallery" class="gallery-section">
+        <div class="gallery-container">
+            <h2>Foto e mas---</h2>
+            <!-- Masonry Gallery Grid -->
+            <div class="masonry-gallery" id="galleryGrid">
+                <!-- Gallery items will be loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about-section">
+        <div class="about-container">
+            <h2>Tentang Galeri</h2>
+            <p>
+                Galeri pribadi kami menghadirkan kumpulan foto terbaik yang mengabadikan setiap momen penuh makna.
+Setiap gambar dipilih secara selektif untuk memberikan kesan visual yang kuat dan berkesan bagi setiap pengunjung.
+Bagi kami, fotografi adalah media yang mampu menyampaikan cerita, suasana, dan emosi tanpa perlu banyak kata.
+            </p>
+        </div>
+    </section>
+
+    <!-- Contact/Footer Section -->
+    <section id="contact" class="contact-section">
+        <div class="contact-container">
+            <div class="contact-content">
+                <div class="footer-section">
+                    <h3>📍 Lokasi</h3>
+                    <p>Gumeng, pasuruan</p>
+                </div>
+                <div class="footer-section">
+                    <h3>📧 Hubungi Kami</h3>
+                    <p>Email: mas@gmail.com</p>
+                    <p>Telepon: +62 08344333444</p>
+                </div>
+                <div class="footer-section">
+                    <h3>⏰ Jam Kerja</h3>
+                    <p>Senin - Jumat: libur</p>
+                    <p>Sabtu - Minggu: Tutup</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 Galeri Pribadi. Semua foto adalah karya saya sendiri.</p>
+        <div class="social-links">
+            <a href="#">Facebook</a>
+            <a href="#">Instagram</a>
+            <a href="#">Twitter</a>
+        </div>
+    </footer>
+
+    <!-- Modal untuk gambar besar -->
+    <div id="imageModal" class="modal">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <img class="modal-content" id="modalImage">
+        <div id="caption"></div>
+        <div class="modal-nav">
+            <button class="prev" onclick="changeImage(-1)">❮ Sebelumnya</button>
+            <button class="next" onclick="changeImage(1)">Berikutnya ❯</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

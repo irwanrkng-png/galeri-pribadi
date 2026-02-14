@@ -1,0 +1,16 @@
+{
+  "firebase": {
+    "apiKey": "YOUR_API_KEY_HERE",
+    "authDomain": "your-project.firebaseapp.com",
+    "databaseURL": "https://your-project.firebaseio.com",
+    "projectId": "your-project-id",
+    "storageBucket": "your-project.appspot.com",
+    "messagingSenderId": "YOUR_SENDER_ID",
+    "appId": "YOUR_APP_ID"
+  },
+  "admin": {
+    "username": "admin",
+    "password": "admin123"
+  },
+  "note": "Ganti semua nilai di atas dengan konfigurasi Firebase Anda sendiri"
+}
