@@ -7,6 +7,6 @@
 
 window.supabaseConfigExists = true; // Supabase config enabled
 window.SUPABASE_URL = 'https://upapfdgheyiltpgtlwfhy.supabase.co';
-window.SUPABASE_ANON_KEY = 'sb_publishable_...';
+window.SUPABASE_ANON_KEY = 'sb_publishable_f36uO3wq-KqXyT2LWx2m4A_qNeYDTMU';
 
 // NOTE: Do NOT commit production secret keys. The anon key is safe for client use.
